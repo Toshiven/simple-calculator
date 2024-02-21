@@ -1,6 +1,6 @@
 "# simple-calculator" 
 
-###Simple Android Calculator
+# Simple Android Calculator
 
 ---
 
