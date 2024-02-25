@@ -2,6 +2,7 @@ package com.abler.simple_calculator;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.annotation.SuppressLint;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.TextView;
@@ -18,10 +19,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        // find text views and assign them to variables
         resultTv = findViewById(R.id.result_tv);
         solutionTv = findViewById(R.id.solution_tv);
 
-        // Find buttons and set click listeners
+        // find buttons and set on click listeners
         findViewById(R.id.c).setOnClickListener(this);
         findViewById(R.id.open_bracket).setOnClickListener(this);
         findViewById(R.id.close_bracket).setOnClickListener(this);
@@ -44,32 +46,48 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         findViewById(R.id.dot).setOnClickListener(this);
     }
 
+    @SuppressLint("SetTextI18n")
     @Override
     public void onClick(View view) {
         MaterialButton button = (MaterialButton) view;
         String buttonText = button.getText().toString();
 
         switch (buttonText) {
+
+            // clears everything
             case "AC":
                 currentExpression = "";
                 solutionTv.setText("");
                 resultTv.setText("0");
                 break;
+
+                /* evaluate the expression and display results
+                   and error handling
+                */
             case "=":
-                solutionTv.setText(currentExpression);
                 try {
                     double result = evaluateExpression(currentExpression);
                     resultTv.setText(String.valueOf(result));
+                } catch (SyntaxException e) {
+                    resultTv.setText("Syntax Error");
+                } catch (ArithmeticException e) {
+                    resultTv.setText("Math Error");
                 } catch (Exception e) {
                     resultTv.setText("Error");
+                } finally {
+                    solutionTv.setText(currentExpression);
                 }
                 break;
+
+                // clear the last character of the expression
             case "C":
                 if (!currentExpression.isEmpty()) {
                     currentExpression = currentExpression.substring(0, currentExpression.length() - 1);
                     solutionTv.setText(currentExpression);
                 }
                 break;
+
+                // appends the button next to the expression
             default:
                 currentExpression += buttonText;
                 solutionTv.setText(currentExpression);
@@ -77,23 +95,38 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
 
-    double evaluateExpression(String expression) {
+    // evaluate the given expression
+    double evaluateExpression(String expression) throws SyntaxException, ArithmeticException {
         try {
             return eval(expression);
         } catch (Exception e) {
             e.printStackTrace();
-            throw new RuntimeException(e); // Handle error gracefully
+            if (e instanceof ArithmeticException) {
+                throw new ArithmeticException(e.getMessage());
+            } else {
+                throw new SyntaxException(e.getMessage());
+            }
         }
     }
 
+    // expression for the syntax errors
+    public static class SyntaxException extends Exception {
+        public SyntaxException(String message) {
+            super(message);
+        }
+    }
+
+    // function for the math expressions
     double eval(final String str) {
         return new Object() {
             int pos = -1, ch;
 
+            // gets the next character in the expression
             void nextChar() {
                 ch = (++pos < str.length()) ? str.charAt(pos) : -1;
             }
 
+            // checks if the next character matches the expected character
             boolean eat(int charToEat) {
                 while (ch == ' ') nextChar();
                 if (ch == charToEat) {
@@ -103,13 +136,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 return false;
             }
 
+            // parse the entire expression
             double parse() {
                 nextChar();
                 double x = parseExpression();
                 if (pos < str.length()) throw new RuntimeException("Unexpected: " + (char) ch);
                 return x;
             }
-
+            // parse the expressions for addition or subtraction
             double parseExpression() {
                 double x = parseTerm();
                 for (;;) {
@@ -119,6 +153,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 }
             }
 
+            // parse the term for multiplication or division
             double parseTerm() {
                 double x = parseFactor();
                 for (;;) {
@@ -133,6 +168,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 }
             }
 
+            // parse a factor, which can be a number, a parenthesized expression, or unary plus/minus
             double parseFactor() {
                 if (eat('+')) return parseFactor(); // Unary plus
                 if (eat('-')) return -parseFactor(); // Unary minus
